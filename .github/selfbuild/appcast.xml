@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Sparkle feed for self-compiled AirSync+ builds. It is intentionally empty:
+  without it the app would offer to replace the self-compiled build with the
+  official one. The self-build workflow points SUFeedURL here.
+-->
+<rss version="2.0" xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle">
+    <channel>
+        <title>AirSync (self-compiled)</title>
+    </channel>
+</rss>
