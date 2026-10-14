@@ -187,6 +187,16 @@ jobs:
         with:
           xcode-version: ${{ vars.XCODE_VERSION || 'latest-stable' }}
 
+      # Since Xcode 26 the Metal compiler is a separate download, and the
+      # runner images don't include it. AirSync's mirroring uses Metal shaders.
+      - name: Install Metal toolchain
+        run: |
+          for _ in 1 2 3; do
+            xcodebuild -downloadComponent MetalToolchain && exit 0
+            sleep 15
+          done
+          exit 1
+
       - name: Cache Swift packages
         uses: actions/cache@v4
         with:
