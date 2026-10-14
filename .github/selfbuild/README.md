@@ -55,7 +55,7 @@ upstream's signing and Telegram secrets, so in a fork they just fail.
 | `SYNC_FORK` | variable | off | `true` also fast-forwards/merges this fork from upstream on each poll |
 | `UPSTREAM_REPO` | variable | `sameerasw/airsync-mac` | Repository to build |
 | `UPSTREAM_BRANCH` | variable | `main` | Branch to follow |
-| `MACOS_RUNNER` | variable | `macos-26` | Runner label. The project needs the Xcode 26 SDK |
+| `MACOS_RUNNER` | variable | automatic | Runner label. By default each commit's highest `MACOSX_DEPLOYMENT_TARGET` picks it: macOS 27 → `xcode-27`, older → `macos-26` |
 | `XCODE_VERSION` | variable | `latest-stable` | Passed to `maxim-lobanov/setup-xcode` |
 | `KEEP_PRERELEASES` | variable | `15` | How many branch-head builds to keep |
 | `SPARKLE_FEED_URL` | variable | this folder's `appcast.xml` | Sparkle feed baked into the app |
