@@ -81,6 +81,7 @@ jobs:
           FORCE: ${{ inputs.force && 'true' || 'false' }}
           NTFY_URL: ${{ secrets.NTFY_URL }}
           NTFY_TOKEN: ${{ secrets.NTFY_TOKEN }}
+          MACOS_RUNNER: ${{ vars.MACOS_RUNNER }}
         run: |
           set -euo pipefail
           up()  { GH_TOKEN="$UP_TOKEN" gh api "$@"; }
@@ -106,9 +107,14 @@ jobs:
           for sha in $(printf '%s\n' "${candidates[@]}" | grep . | awk '!seen[$0]++'); do
             short=${sha:0:7}
             upstream_tag=$(jq -r --arg s "$sha" '[.[] | select(.sha == $s) | .name][0] // ""' <<<"$tags")
-            version=$(up "repos/$UPSTREAM_REPO/contents/AirSync.xcodeproj/project.pbxproj?ref=$sha" \
-                        -H 'Accept: application/vnd.github.raw' \
-                      | sed -n 's/.*MARKETING_VERSION = \([^;]*\);.*/\1/p' | sort -V | tail -1)
+            pbxproj=$(up "repos/$UPSTREAM_REPO/contents/AirSync.xcodeproj/project.pbxproj?ref=$sha" \
+                        -H 'Accept: application/vnd.github.raw')
+            version=$(sed -n 's/.*MARKETING_VERSION = \([^;]*\);.*/\1/p' <<<"$pbxproj" | sort -V | tail -1)
+            # A deployment target of macOS N needs the macOS N SDK, i.e. Xcode N.
+            # GitHub names its Xcode 27+ images by Xcode version (xcode-27, ...).
+            xcode=$(sed -n 's/.*MACOSX_DEPLOYMENT_TARGET = \([0-9]*\).*/\1/p' <<<"$pbxproj" | sort -n | tail -1)
+            if [ "${xcode:-0}" -ge 27 ]; then runner="xcode-$xcode"; else runner=macos-26; fi
+            runner=${MACOS_RUNNER:-$runner}
             tag="v${version}-${short}"
             # Upstream marks betas with a suffix such as v2.0.27-BETA.
             stable=false
@@ -138,10 +144,10 @@ jobs:
               fi
             fi
 
-            echo "Will build $tag (upstream tag: ${upstream_tag:-none})"
+            echo "Will build $tag on $runner (upstream tag: ${upstream_tag:-none})"
             plan=$(jq -c --arg sha "$sha" --arg short "$short" --arg version "$version" --arg tag "$tag" \
-                         --arg upstream_tag "$upstream_tag" --arg stable "$stable" \
-                   '. + [{sha: $sha, short: $short, version: $version, tag: $tag, upstream_tag: $upstream_tag, stable: $stable}]' <<<"$plan")
+                         --arg upstream_tag "$upstream_tag" --arg stable "$stable" --arg runner "$runner" \
+                   '. + [{sha: $sha, short: $short, version: $version, tag: $tag, upstream_tag: $upstream_tag, stable: $stable, runner: $runner}]' <<<"$plan")
           done
 
           echo "matrix={\"include\":$plan}" >> "$GITHUB_OUTPUT"
@@ -151,7 +157,7 @@ jobs:
     name: Build ${{ matrix.tag }}
     needs: detect
     if: needs.detect.outputs.count != '0'
-    runs-on: ${{ vars.MACOS_RUNNER || 'macos-26' }}
+    runs-on: ${{ matrix.runner }}
     timeout-minutes: 60
     strategy:
       fail-fast: false
